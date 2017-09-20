@@ -1,0 +1,30 @@
+#python specific
+*.pyc
+
+## generic files to ignore
+*~
+*.lock
+*.log
+*.log.*
+*.idea
+*.DS_Store
+*.swp
+*.out
+*.diff
+
+## data
+*.sqlite3
+*.db
+*.csv
+*.gz
+*.zip
+*.rdb
+*.dat
+*.ckpt
+*.h5
+
+# pics
+*.png
+*.jpg
+
+/data/*
