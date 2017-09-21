@@ -110,7 +110,20 @@ def make_adv_samples(raw_images_dir, cache_dir, cuda_device):
     batch_size = 64
     for i in range(0, len(images), batch_size):
         names = images[i:i + batch_size]
-        batch = np.array([img_to_array(load_img(name)) for name in names])
+        batch = []
+        for name in names:
+            try:
+                img = load_img(name)
+            except OSError:
+                img = None
+                for j in range(len(names)):
+                    try:
+                        img = load_img(names[j])
+                        continue
+                    except:
+                        pass
+
+            batch.append(img_to_array(img))
 
         try:
             targets = ensemble.predict(batch).astype('float32')
