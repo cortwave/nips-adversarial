@@ -141,7 +141,7 @@ def make_adv_samples(raw_images_dir, cache_dir, cuda_device):
         y_data[...] = targets
 
         file.close()
-        logger.info('{} batches processed'.format(i+1))
+        logger.info('{} batches processed'.format(int(i / batch_size) + 1))
 
     logger.info('Done!')
 
