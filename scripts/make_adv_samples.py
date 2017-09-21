@@ -2,6 +2,7 @@ import logging
 from glob import glob
 from os import environ
 
+from fire import Fire
 import h5py
 from keras.metrics import categorical_crossentropy
 from keras.utils import to_categorical
@@ -14,7 +15,6 @@ from scipy.misc import imresize
 import numpy as np
 
 K.set_learning_phase(0)
-environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s: %(name)s: %(message)s (%(asctime)s; %(filename)s:%(lineno)d)',
@@ -100,11 +100,13 @@ class Ensemble:
         return np.mean(result, axis=0)
 
 
-def make_adv_samples(raw_images_dir, cache_dir):
-    processor = Attacker(eps=4)
+def make_adv_samples(raw_images_dir, cache_dir, cuda_device):
+    environ['CUDA_VISIBLE_DEVICES'] = f'{cuda_device}'
+
+    processor = Attacker(eps=np.random.randint(4, 12))
     ensemble = Ensemble()
 
-    images = glob(f'{raw_images_dir}/*')
+    images = glob(f'{raw_images_dir}/*.jpg') + glob(f'{raw_images_dir}/*.png')
     batch_size = 64
     for i in range(0, len(images), batch_size):
         names = images[i:i + batch_size]
@@ -117,7 +119,7 @@ def make_adv_samples(raw_images_dir, cache_dir):
             logger.exception('Something went wrong')
             continue
 
-        file = h5py.File(f'{cache_dir}/{i/batch_size}.h5', 'w')
+        file = h5py.File(f'{cache_dir}/{int(i/batch_size)}.h5', 'w')
 
         x_data = file.create_dataset('x_data', shape=(batch_size, 299, 299, 3), dtype=np.uint8)
         y_data = file.create_dataset('y_data', shape=(batch_size, 1000), dtype=np.float32)
@@ -126,11 +128,10 @@ def make_adv_samples(raw_images_dir, cache_dir):
         y_data[...] = targets
 
         file.close()
-        logger.info('{} images processed'.format(i))
+        logger.info('{} batches processed'.format(i+1))
 
     logger.info('Done!')
 
 
 if __name__ == '__main__':
-    make_adv_samples(raw_images_dir='/home/arseny/imgnet/images',
-                     cache_dir='../data/binimg')
+    Fire(make_adv_samples)

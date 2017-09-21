@@ -3,13 +3,12 @@ from glob import glob
 import logging
 from sys import exit
 
+from fire import Fire
 import numpy as np
 import requests
 from PIL import Image
 from joblib import Parallel, delayed
 
-IMAGE_LIST = '../data/imgs.txt'
-OUTPUT_DIR = '../data/images'
 
 logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s: %(name)s: %(message)s (%(asctime)s; %(filename)s:%(lineno)d)',
@@ -34,9 +33,9 @@ def crop_image(img):
     return img.resize((299, 299))
 
 
-def download(url):
+def download(url, out_dir):
     image_name = url.split('/')[-1]
-    files = glob(f'{OUTPUT_DIR}/*')
+    files = glob(f'{out_dir}/*')
     if image_name in files:
         return
 
@@ -47,7 +46,7 @@ def download(url):
             img = Image.open(BytesIO(r.content))
             if 10 < np.array(img).mean() < 250:
                 # too black or too white images are probably broken
-                crop_image(img).save(f'{OUTPUT_DIR}/{image_name}')
+                crop_image(img).save(f'{out_dir}/{image_name.lower()}')
             logger.info(f'{image_name} saved')
     except KeyboardInterrupt:
         exit()
@@ -55,8 +54,12 @@ def download(url):
         logger.exception(f'Can not download {url}')
 
 
-if __name__ == '__main__':
-    with open(IMAGE_LIST) as lst:
+def main(img_list, out_dir):
+    with open(img_list) as lst:
         urls = [url[:-1] for url in lst.readlines()]
         np.random.shuffle(urls)
-        Parallel(n_jobs=32, backend='threading')(delayed(download)(url) for url in urls)
+        Parallel(n_jobs=32, backend='threading')(delayed(download)(url, out_dir) for url in urls)
+
+
+if __name__ == '__main__':
+    Fire(main)
