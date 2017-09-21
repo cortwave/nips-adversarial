@@ -100,8 +100,9 @@ class Ensemble:
         return np.mean(result, axis=0)
 
 
-def make_adv_samples(raw_images_dir, cache_dir, cuda_device):
-    environ['CUDA_VISIBLE_DEVICES'] = f'{cuda_device}'
+def make_adv_samples(raw_images_dir, cache_dir, cuda_device=None):
+    if cuda_device:
+        environ['CUDA_VISIBLE_DEVICES'] = f'{cuda_device}'
 
     processor = Attacker(eps=np.random.randint(4, 12))
     ensemble = Ensemble()
@@ -115,15 +116,18 @@ def make_adv_samples(raw_images_dir, cache_dir, cuda_device):
             try:
                 img = load_img(name)
             except OSError:
+                logger.info(f'image {name} is broken')
                 img = None
                 for j in range(len(names)):
                     try:
                         img = load_img(names[j])
+                        logger.info(f'using {names[j]} instead')
                         continue
                     except:
                         pass
 
             batch.append(img_to_array(img))
+        batch = np.array(batch)
 
         try:
             targets = ensemble.predict(batch).astype('float32')
@@ -135,9 +139,11 @@ def make_adv_samples(raw_images_dir, cache_dir, cuda_device):
         file = h5py.File(f'{cache_dir}/{int(i/batch_size)}.h5', 'w')
 
         x_data = file.create_dataset('x_data', shape=(batch_size, 299, 299, 3), dtype=np.uint8)
+        x_data_adv = file.create_dataset('x_data_adv', shape=(batch_size, 299, 299, 3), dtype=np.uint8)
         y_data = file.create_dataset('y_data', shape=(batch_size, 1000), dtype=np.float32)
 
-        x_data[...] = processed
+        x_data[...] = batch.astype('uint8')
+        x_data_adv[...] = processed
         y_data[...] = targets
 
         file.close()
