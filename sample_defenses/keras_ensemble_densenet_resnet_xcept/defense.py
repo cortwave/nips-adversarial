@@ -1,8 +1,6 @@
 from glob import glob
 from os import environ
 import logging
-
-from keras.models import load_model
 from keras.applications.imagenet_utils import preprocess_input
 from keras.applications.xception import preprocess_input as preprocess_xcept
 from keras.preprocessing import image

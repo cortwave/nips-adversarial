@@ -136,7 +136,7 @@ def make_adv_samples(raw_images_dir, cache_dir, cuda_device=None):
     counter = 0
     while len(queue) >= batch_size:
         counter += 1
-        if counter >= 3:
+        if counter >= 10:
             exit(3)
 
         logger.info(f'There are {len(queue)} images left')
