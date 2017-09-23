@@ -15,7 +15,6 @@
 ## data
 *.sqlite3
 *.db
-*.csv
 *.gz
 *.zip
 *.rdb
