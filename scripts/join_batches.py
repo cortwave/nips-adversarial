@@ -3,6 +3,8 @@ import logging
 
 from h5py import File
 from fire import Fire
+from sklearn.model_selection import train_test_split
+from joblib import Parallel, delayed
 import numpy as np
 
 logging.basicConfig(level=logging.INFO,
@@ -11,11 +13,10 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__file__)
 
 
-def main(batch_dir, out_dir, batch_size=64):
-    batches = glob(f'{batch_dir}/*.h5')
+def unite(batches, out_dir, out_name, batch_size):
     num_batches = len(batches)
 
-    file = File(f'{out_dir}/{batch_dir.split("/")[0]}.h5', 'w')
+    file = File(f'{out_dir}/{out_name}.h5', 'w')
 
     x_data = file.create_dataset('x_data', shape=(batch_size * num_batches, 299, 299, 3), dtype=np.uint8,
                                  compression="gzip")
@@ -35,9 +36,19 @@ def main(batch_dir, out_dir, batch_size=64):
         y_data[offset: offset + batch_size] = batch_y
 
         batch.close()
-        logger.info(f'{i+1}/{num_batches} batches repacked')
+        logger.info(f'{i+1}/{num_batches} batches for {out_name} repacked')
 
     file.close()
+
+
+def main(batch_dir, out_dir, batch_size=64):
+    batches = glob(f'{batch_dir}/*.h5')
+    logger.info(f'There are {len(batches)} batches')
+    train_batches, test_batches = train_test_split(batches, test_size=.2)
+
+    Parallel(n_jobs=2)(delayed(unite)(batches_list, out_dir, name, batch_size)
+                       for batches_list, name in ((train_batches, 'train'),
+                                                  (test_batches, 'test')))
 
 
 if __name__ == '__main__':
