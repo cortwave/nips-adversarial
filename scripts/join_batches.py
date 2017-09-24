@@ -18,12 +18,9 @@ def unite(batches, out_dir, out_name, batch_size):
 
     file = File(f'{out_dir}/{out_name}.h5', 'w')
 
-    x_data = file.create_dataset('x_data', shape=(batch_size * num_batches, 299, 299, 3), dtype=np.uint8,
-                                 compression="gzip")
-    x_data_adv = file.create_dataset('x_data_adv', shape=(batch_size * num_batches, 299, 299, 3), dtype=np.uint8,
-                                     compression="gzip")
-    y_data = file.create_dataset('y_data', shape=(batch_size * num_batches, 1000), dtype=np.float32,
-                                 compression="gzip")
+    x_data = file.create_dataset('x_data', shape=(batch_size * num_batches, 299, 299, 3), dtype=np.uint8)
+    x_data_adv = file.create_dataset('x_data_adv', shape=(batch_size * num_batches, 299, 299, 3), dtype=np.uint8)
+    y_data = file.create_dataset('y_data', shape=(batch_size * num_batches, 1000), dtype=np.float32)
 
     for i, batch in enumerate(batches):
         batch = File(batch, 'r')
