@@ -10,18 +10,17 @@ import h5py
 from keras.metrics import categorical_crossentropy
 from keras.models import load_model as _load_model
 from keras.applications.inception_v3 import preprocess_input
-from keras.utils
 import numpy as np
 
 environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
-environ['CUDA_VISIBLE_DEVICES'] = ''
+# environ['CUDA_VISIBLE_DEVICES'] = ''
 
 logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s: %(name)s: %(message)s (%(asctime)s; %(filename)s:%(lineno)d)',
                     datefmt="%Y-%m-%d %H:%M:%S", )
 logger = logging.getLogger(__file__)
 
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 
 
 def load_model(model):
@@ -31,14 +30,10 @@ def load_model(model):
 
 
 def form_batch(X, y, batch_size):
-    idx = np.random.randint(0, X.shape[0], int(batch_size))
+    idx = np.random.choice(np.arange(X.shape[0]), int(batch_size), replace=False)
     idx = sorted(idx.tolist())
     # when h5 dataset is not loaded into the memory, it accepts only lists as indices
-    try:
-        return X[idx], y[idx]
-    except:
-        logger.exception(f'Something went wrong with {idx}')
-        raise ValueError()
+    return X[idx], y[idx]
 
 
 class threadsafe_iter:
@@ -68,9 +63,11 @@ def threadsafe_generator(f):
     return g
 
 
-def smooth(arr, temperature=2):
-    arr = (np.log(arr) + 1e-6) / temperature
-    return np.exp(arr) / np.sum(np.exp(arr), axis=1).reshape(-1, 1)
+def smooth(arr, temperature=10):
+    arr = (np.log(arr + 1e-6)) / temperature
+    arr = np.exp(arr) / np.sum(np.exp(arr), axis=1).reshape(-1, 1)
+
+    return arr
 
 
 @threadsafe_generator
@@ -81,7 +78,6 @@ def batch_generator(x_data, x_data_adv, y_data, batch_size):
 
         x = preprocess_input(np.vstack((x_batch1, x_batch2)).astype('float32'))
         y = smooth(np.vstack((y_batch1, y_batch2)), temperature=2)
-        logger.info('Batch is ready')
         yield x, y
 
 
@@ -113,7 +109,7 @@ def main(network, dataset_train, dataset_test):
 
     model_checkpoint = ModelCheckpoint('./updated.h5',
                                        monitor='val_loss',
-                                       save_best_only=True, verbose=1)
+                                       save_best_only=True, verbose=0)
     es = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1, mode='auto')
     reducer = ReduceLROnPlateau(min_lr=1e-6, verbose=1, factor=0.1, patience=4)
     callbacks = [model_checkpoint, es, reducer]
@@ -125,7 +121,7 @@ def main(network, dataset_train, dataset_test):
                         workers=4,
                         validation_steps=20,
                         callbacks=callbacks,
-                        verbose=2,
+                        verbose=1,
                         use_multiprocessing=False
                         )
 

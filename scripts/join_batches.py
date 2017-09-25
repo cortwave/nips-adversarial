@@ -44,8 +44,8 @@ def main(batch_dir, out_dir, batch_size=64):
     train_batches, test_batches = train_test_split(batches, test_size=.2)
 
     Parallel(n_jobs=2)(delayed(unite)(batches_list, out_dir, name, batch_size)
-                       for batches_list, name in ((train_batches, 'train'),
-                                                  (test_batches, 'test')))
+                       for batches_list, name in ((train_batches, 'new_train'),
+                                                  (test_batches, 'new_test')))
 
 
 if __name__ == '__main__':
