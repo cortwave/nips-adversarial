@@ -39,10 +39,9 @@ def nofilter(x):
     return x
 
 
-def main(data_dir='../data', scripts_dir='./'):
+def main(data_dir='../data', scripts_dir='./', use_adv = True):
     file = File(path.join(data_dir, 'sample.h5'))
-    x_data = file['x_data'][:]
-    # x_data_adv = file['x_data_adv'][:]
+    x_data = file['x_data_adv'][:] if use_adv else file['x_data'][:]
     y_data = file['y_data'][:]
 
     inc = InceptionV3()
