@@ -13,7 +13,6 @@ from keras.applications.xception import Xception
 from joblib import Parallel, delayed
 import numpy as np
 from h5py import File
-
 from fire import Fire
 
 logging.basicConfig(level=logging.INFO,
@@ -39,7 +38,7 @@ def nofilter(x):
     return x
 
 
-def main(data_dir='../data', scripts_dir='./', use_adv = True):
+def main(data_dir='../data', scripts_dir='./', use_adv=True):
     file = File(path.join(data_dir, 'sample.h5'))
     x_data = file['x_data_adv'][:] if use_adv else file['x_data'][:]
     y_data = file['y_data'][:]
