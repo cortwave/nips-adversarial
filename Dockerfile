@@ -31,7 +31,7 @@ RUN pip3 --no-cache-dir install \
         Fire \
         Keras==2.0.6 \
         tensorflow-gpu \
-        foolbox \
+        foolbox==0.9.5 \
         scikit-image
 
 RUN ln -s /usr/bin/python3 /usr/bin/python
