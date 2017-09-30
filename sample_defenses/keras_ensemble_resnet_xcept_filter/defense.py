@@ -41,10 +41,7 @@ def process_batch(fnames):
         images_xc.append(img299)
         names.append(fname.split('/')[-1])
 
-    images_resnet = preprocess_input(np.array(images_resnet).astype('float32'))
-    images_xc = preprocess_xcept(np.array(images_xc).astype('float32'))
-
-    return names, images_resnet, images_xc
+    return names, np.array(images_resnet), np.array(images_xc)
 
 
 def main(input_dir, output_file):
@@ -67,9 +64,11 @@ def main(input_dir, output_file):
             images_xc_filtered = apply_filter(images_xc, filter_func)
             for i, net in enumerate(networks):
                 if i == 0:
-                    pred += net.predict(images_resnet_filtered, batch_size=50)
+                    processed = preprocess_input(images_resnet_filtered.astype('float32'))
+                    pred += net.predict(processed, batch_size=50)
                 elif i == 1:
-                    pred += net.predict(images_xc_filtered, batch_size=50)
+                    processed = preprocess_xcept(images_xc_filtered.astype('float32'))
+                    pred += net.predict(processed, batch_size=50)
 
         for i in range(pred.shape[0]):
             final.append('{},{}\n'.format(names[i], np.argmax(pred[i]) + 1))
