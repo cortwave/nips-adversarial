@@ -64,7 +64,7 @@ def main(input_dir, output_file):
             images_xc_filtered = apply_filter(images_xc, filter_func)
             for i, net in enumerate(networks):
                 if i == 0:
-                    processed = preprocess_input(images_resnet_filtered.astype('float32'))
+                    processed = preprocess_xcept(images_resnet_filtered.astype('float32'))
                     pred += net.predict(processed, batch_size=50)
                 elif i == 1:
                     processed = preprocess_xcept(images_xc_filtered.astype('float32'))
