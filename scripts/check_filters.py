@@ -8,7 +8,7 @@ from skimage.restoration import denoise_wavelet
 from skimage.restoration import denoise_nl_means
 from skimage.filters import median, gaussian
 from keras.models import load_model
-from keras.applications.inception_v3 import InceptionV3
+from keras.applications.inception_v3 import InceptionV3, preprocess_input
 from keras.applications.xception import Xception
 from joblib import Parallel, delayed
 import numpy as np
@@ -22,12 +22,11 @@ logger = logging.getLogger(__file__)
 
 
 def apply_filter(batch, filter_func):
-    data = Parallel(8)(delayed(filter_func)(img) for img in batch)
-    return np.array(data)
+    data = Parallel(-1)(delayed(filter_func)(img.astype('uint8')) for img in batch)
+    return (np.array(data) * 255).astype('uint8')
 
 
 def filter_median(img):
-    img = img.astype('uint16')
     res = []
     for c in range(img.shape[-1]):
         res.append(median(img[..., c]))
@@ -45,17 +44,21 @@ def main(data_dir='../data', scripts_dir='./', use_adv=True):
 
     inc = InceptionV3()
     inc.compile(loss='categorical_crossentropy',
-                optimizer='sgd')
+                optimizer='sgd',
+                metrics=['accuracy'])
     xc = Xception()
     xc.compile(loss='categorical_crossentropy',
-               optimizer='sgd')
+               optimizer='sgd',
+               metrics=['accuracy'])
 
     inc_adv = load_model(path.join(scripts_dir, 'inception_adv.h5'))
     inc_adv.compile(loss='categorical_crossentropy',
-                    optimizer='sgd')
+                    optimizer='sgd',
+                    metrics=['accuracy'])
     xc_adv = load_model(path.join(scripts_dir, 'xception_adv.h5'))
     xc_adv.compile(loss='categorical_crossentropy',
-                   optimizer='sgd')
+                   optimizer='sgd',
+                   metrics=['accuracy'])
 
     for net_name, net in (('inception', inc),
                           ('inception_adv', inc_adv),
@@ -71,9 +74,10 @@ def main(data_dir='../data', scripts_dir='./', use_adv=True):
                   nofilter):
             try:
                 imgs = apply_filter(x_data, f)
-                score = net.evaluate(imgs, y_data, batch_size=64, verbose=0)
+                imgs = preprocess_input(imgs.astype('float32'))
+                loss, acc = net.evaluate(imgs, y_data, batch_size=64, verbose=0)
                 fname = f.func.__name__ if hasattr(f, 'func') else f.__name__
-                logger.info(f'Score for {net_name} with {fname} is {score:.4f}')
+                logger.info(f'{net_name} with {fname}: loss {loss:.3f}, accuracy {acc:.3f}')
             except:
                 logger.exception(f'{f} failed')
 
