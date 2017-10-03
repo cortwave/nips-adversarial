@@ -156,11 +156,12 @@ def get_config(name):
         resize = partial(adjust_size, shape=(299, 299, 3))
     elif name == 'resnet':
         preprocess = preprocess_xcept
+        # it's a bug - I should have used other preprocessing for Resnet
         network = load_model('./resnet.h5')
         resize = partial(adjust_size, shape=(224, 224, 3))
     elif name == 'densenet':
         preprocess = preprocess_xcept
-        network = load_model('./densenet.h5')
+        # it's a bug - same as above
         resize = partial(adjust_size, shape=(224, 224, 3))
     else:
         raise ValueError(f'{name} is not recognized')

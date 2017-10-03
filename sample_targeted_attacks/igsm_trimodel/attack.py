@@ -8,7 +8,6 @@ from keras.metrics import categorical_crossentropy
 from keras.applications.inception_v3 import preprocess_input
 from keras.models import load_model
 from keras import backend as K
-from scipy.misc import imresize
 import numpy as np
 import pandas as pd
 from fire import Fire
@@ -25,58 +24,46 @@ logger = logging.getLogger(__file__)
 logger.info('Start!')
 
 
-def postprocess_inc(x):
-    x /= 2
-    x += .5
-    x *= 255.
-    x = np.clip(x, 0, 255)
-    return x
-
-
-def adjust_size(batch, shape):
-    if batch.shape[1] != shape[0]:
-        images = np.array([imresize(img, shape) for img in batch])
-        return images
-    return batch
-
-
-class Metamodel:
-    def __init__(self, model, preprocess, need_resize):
-        self.model = model
-        self.preprocess = preprocess
-        self.need_resize = need_resize
-
-
 class ImageProcessor:
     def __init__(self, eps):
-        self.model = Metamodel(model=load_model('./inception.h5'),
-                               preprocess=preprocess_input,
-                               need_resize=False)
+        self.models = (load_model('./inception.h5'),
+                       load_model('./inception_adv.h5'),
+                       load_model('./xception.h5'))
+
         self.eps = eps
 
-    def do_gsa(self, raw, batch_targets):
-        img = preprocess_input(raw)
-        adv = np.copy(raw)
+    def get_gradient_signs(self, original_array, target_idx=None):
+        if target_idx is None:
+            model = self.models[0]
+            target_idx = model.predict(preprocess_input(np.copy(original_array))).argmax(axis=-1)
+        else:
+            model = np.random.choice(self.models)
 
-        i = 0
-        while np.abs(adv - raw).max() < self.eps and i < self.eps * 2:
-            i += 1
-            grad = self.get_gradient_signs(img, batch_targets)
-            adv -= grad
-            adv = np.clip(adv, 0, 255)
-            img = preprocess_input(np.copy(adv))
-        return adv
-
-    def get_gradient_signs(self, original_array, target_idx):
-        model = self.model.model
         target = to_categorical(target_idx, 1000)
         target_variable = K.variable(target)
         loss = categorical_crossentropy(model.output, target_variable)
         gradients = K.gradients(loss, model.input)
         get_grad_values = K.function([model.input], gradients)
-        grad_values = get_grad_values([original_array])[0]
+        grad_values = get_grad_values([preprocess_input(original_array)])[0]
         grad_signs = np.sign(grad_values)
         return grad_signs
+
+    def do_gsa(self, raw, batch_targets):
+        adv = np.copy(raw)
+        original = np.copy(raw)
+        img = preprocess_input(raw)
+
+        neutralize = self.get_gradient_signs(np.copy(img), target_idx=None)
+        adv += neutralize
+
+        i = 0
+        while np.abs(adv - original).max() < self.eps and i < self.eps * 2:
+            i += 1
+            grad = self.get_gradient_signs(img, batch_targets)
+            adv -= grad
+            adv = np.clip(adv, 0, 255)
+            img = np.copy(adv)
+        return adv
 
 
 def main(input_dir, output_dir, max_epsilon):
@@ -90,7 +77,7 @@ def main(input_dir, output_dir, max_epsilon):
     for i in range(0, len(images), batch_size):
         names = images[i:i + batch_size]
         batch = np.array([img_to_array(load_img(name)) for name in names])
-        batch_targets = [targets[name.split('.')[0].split('/')[-1]] for name in names]
+        batch_targets = [targets[name.split('/')[-1]] for name in names]
         output_names = [path.join(output_dir, fname.split('/')[-1]) for fname in names]
         processed = processor.do_gsa(batch, batch_targets)
 

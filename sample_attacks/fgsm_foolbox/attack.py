@@ -44,11 +44,9 @@ def get_img(fname):
 
 
 def describe(model, input_image, verbose=False):
-    # Run the image through the neural network
     input_image = np.expand_dims(input_image, 0)
     predictions = model.predict(input_image)
 
-    # Convert the predictions into text and print them
     if verbose:
         predicted_classes = decode_predictions(predictions, top=1)
         imagenet_id, name, confidence = predicted_classes[0][0]

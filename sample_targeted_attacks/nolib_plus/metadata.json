@@ -1,6 +1,0 @@
-{
-  "type": "targeted_attack",
-  "container": "arsenyinfo/keras-tf-adv:latest",
-  "container_gpu": "arsenyinfo/keras-tf-adv:latest",
-  "entry_point": "run_attack.sh"
-}

@@ -1,12 +1,16 @@
 from glob import glob
-from os import environ
+from functools import partial
+from os import environ, cpu_count
 import logging
+from multiprocessing.dummy import Pool
 
-from keras.applications.imagenet_utils import preprocess_input
 from keras.applications.xception import preprocess_input as preprocess_xcept
 from keras.preprocessing import image
 from keras.models import load_model
 import numpy as np
+from skimage.restoration import denoise_tv_chambolle
+from skimage.restoration import denoise_bilateral
+from skimage.filters import gaussian
 from fire import Fire
 
 environ['TF_CPP_MIN_LOG_LEVEL'] = '4'
@@ -18,6 +22,10 @@ logger = logging.getLogger(__file__)
 
 logger.info('Start!')
 
+
+def apply_filter(batch, filter_func):
+    data = Pool(cpu_count()).map(filter_func, batch.astype('uint8'))
+    return (np.array(data) * 255).astype('float32')
 
 
 def process_batch(fnames):
@@ -32,14 +40,11 @@ def process_batch(fnames):
         images_xc.append(img299)
         names.append(fname.split('/')[-1])
 
-    images_resnet = preprocess_input(np.array(images_resnet).astype('float32'))
-    images_xc = preprocess_xcept(np.array(images_xc).astype('float32'))
-
-    return names, images_resnet, images_xc
+    return names, np.array(images_resnet), np.array(images_xc)
 
 
 def main(input_dir, output_file):
-    files = ('./resnet.h5', './xception.h5')
+    files = ('./resnet_adv.h5', './xception_adv.h5')
     networks = [load_model(f) for f in files]
 
     fnames = glob(input_dir + '/*')
@@ -51,11 +56,20 @@ def main(input_dir, output_file):
         names, images_resnet, images_xc = process_batch(batch)
 
         pred = np.zeros((len(names), 1000))
-        for i, net in enumerate(networks):
-            if i == 0:
-                pred += net.predict(images_resnet, batch_size=50)
-            elif i == 1:
-                pred += net.predict(images_xc, batch_size=50)
+        for filter_func in (partial(denoise_tv_chambolle, multichannel=True),
+                            partial(gaussian, multichannel=True),
+                            partial(denoise_bilateral, multichannel=True)):
+            images_resnet_filtered = apply_filter(images_resnet, filter_func)
+            images_xc_filtered = apply_filter(images_xc, filter_func)
+            for i, net in enumerate(networks):
+                if i == 0:
+                    processed = preprocess_xcept(images_resnet_filtered.astype('float32'))
+                    # xception-style preprocessing was used due to bug in adversarial training
+                    # see scripts/fit.py
+                    pred += net.predict(processed, batch_size=50)
+                elif i == 1:
+                    processed = preprocess_xcept(images_xc_filtered.astype('float32'))
+                    pred += net.predict(processed, batch_size=50)
 
         for i in range(pred.shape[0]):
             final.append('{},{}\n'.format(names[i], np.argmax(pred[i]) + 1))

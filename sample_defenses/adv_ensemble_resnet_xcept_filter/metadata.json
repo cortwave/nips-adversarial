@@ -1,6 +1,0 @@
-{
-  "type": "defense",
-  "container": "arsenyinfo/keras-tf-adv:latest",
-  "container_gpu": "arsenyinfo/keras-tf-adv:latest",
-  "entry_point": "run_defense.sh"
-}
